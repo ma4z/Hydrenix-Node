@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request, abort
 import json
+import psutil
 import argparse
 import os
 import subprocess
@@ -125,8 +126,23 @@ def create_server():
 @app.route('/status', methods=['GET'])
 @require_auth
 def status():
-    return jsonify({"status": "online"})
+    # Gather system information
+    cpu_usage = psutil.cpu_percent(interval=1)  # CPU usage in percentage
+    ram_info = psutil.virtual_memory()  # RAM details
+    disk_info = psutil.disk_usage('/')  # Disk usage details for the root directory
 
+    # Prepare the response data
+    status_data = {
+        "status": "online",
+        "cpu_usage_percent": cpu_usage,
+        "total_ram": ram_info.total // (1024 * 1024),  # Total RAM in MB
+        "used_ram": ram_info.used // (1024 * 1024),    # Used RAM in MB
+        "total_cores": psutil.cpu_count(logical=True),  # Total CPU cores (logical)
+        "total_disk": disk_info.total // (1024 * 1024 * 1024),  # Total disk space in GB
+        "used_disk": disk_info.used // (1024 * 1024 * 1024)     # Used disk space in GB
+    }
+
+    return jsonify(status_data)
 def save_key(key):
     config["api_key"] = key
     with open(config_file_path, 'w') as config_file:
